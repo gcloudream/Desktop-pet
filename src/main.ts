@@ -66,17 +66,17 @@ function initSprite(): void {
       }
     }, 200);
 
-    // Animate sleep (slow breathing)
+    // Animate sleep (slow breathing + Zzz)
     let sleepFrame = 0;
     setInterval(() => {
       const currentState = petEl.className;
       if (currentState.includes('sleep')) {
-        render(sleepFrame % 2 === 0 ? 'sleep' : 'idle2');
+        render(sleepFrame % 3 === 0 ? 'sleep' : (sleepFrame % 3 === 1 ? 'idle2' : 'sleep'));
         sleepFrame++;
       }
-    }, 2000);
+    }, 2500);
 
-    // Animate eat (chomping)
+    // Animate eat (chomping faster)
     let eatFrame = 0;
     setInterval(() => {
       const currentState = petEl.className;
@@ -84,9 +84,9 @@ function initSprite(): void {
         render(eatFrame % 2 === 0 ? 'eat' : 'idle1');
         eatFrame++;
       }
-    }, 400);
+    }, 250);
 
-    // Animate happy (wagging tail)
+    // Animate happy (wagging tail + sparkles)
     let happyFrame = 0;
     setInterval(() => {
       const currentState = petEl.className;
@@ -94,7 +94,7 @@ function initSprite(): void {
         render(happyFrame % 2 === 0 ? 'happy' : 'react');
         happyFrame++;
       }
-    }, 250);
+    }, 200);
 
     // Animate grabbed (surprised)
     setInterval(() => {

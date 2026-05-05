@@ -5,16 +5,15 @@ export function createDogSVG(frame: CowFrame): string {
   const p = (x: number, y: number, color: string) =>
     `<rect x="${x*4}" y="${y*4}" width="4" height="4" fill="${color}"/>`;
 
-  const fur = '#C4A882';      // golden retriever
-  const dark = '#8B6914';     // dark brown
-  const belly = '#F5DEB3';    // wheat belly
+  const fur = '#C4A882';
+  const dark = '#8B6914';
+  const belly = '#F5DEB3';
   const eye = '#333333';
   const nose = '#222222';
-  const tongue = '#FF6B6B';
 
   let pixels: string[] = [];
 
-  // Ears (floppy, hanging down)
+  // Ears (floppy)
   pixels.push(p(1, 2, dark)); pixels.push(p(1, 3, dark)); pixels.push(p(1, 4, dark));
   pixels.push(p(10, 2, dark)); pixels.push(p(10, 3, dark)); pixels.push(p(10, 4, dark));
 
@@ -29,12 +28,10 @@ export function createDogSVG(frame: CowFrame): string {
   if (frame === 'sleep') {
     pixels.push(p(3, 3, eye)); pixels.push(p(4, 3, eye));
     pixels.push(p(7, 3, eye)); pixels.push(p(8, 3, eye));
-  } else if (frame === 'happy') {
-    // ^_^ squinty
+  } else if (frame === 'happy' || frame === 'react') {
     pixels.push(p(3, 2, eye)); pixels.push(p(5, 2, eye)); pixels.push(p(4, 3, eye));
     pixels.push(p(7, 2, eye)); pixels.push(p(9, 2, eye)); pixels.push(p(8, 3, eye));
   } else if (frame === 'grabbed') {
-    // O_O big eyes
     for (let dx = 0; dx <= 2; dx++) for (let dy = 0; dy <= 2; dy++) {
       if (!(dx === 1 && dy === 1)) pixels.push(p(3+dx, 2+dy, eye));
     }
@@ -52,16 +49,20 @@ export function createDogSVG(frame: CowFrame): string {
   pixels.push(p(5, 4, nose)); pixels.push(p(6, 4, nose));
   pixels.push(p(5, 5, nose)); pixels.push(p(6, 5, nose));
 
-  // Mouth / tongue
+  // Blush for react/happy
+  if (frame === 'react' || frame === 'happy') {
+    pixels.push(p(2, 4, '#FF9999')); pixels.push(p(9, 4, '#FF9999'));
+  }
+
+  // Tongue for happy/eat
   if (frame === 'happy' || frame === 'eat') {
-    pixels.push(p(5, 6, tongue)); pixels.push(p(6, 6, tongue));
-    pixels.push(p(5, 7, tongue));
+    pixels.push(p(5, 6, '#FF6B6B')); pixels.push(p(6, 6, '#FF6B6B'));
+    pixels.push(p(5, 7, '#FF6B6B'));
   }
 
   // Body
   for (let x = 3; x <= 8; x++) for (let y = 6; y <= 10; y++) pixels.push(p(x, y, fur));
   for (let y = 6; y <= 10; y++) { pixels.push(p(2, y, fur)); pixels.push(p(9, y, fur)); }
-  // Belly
   pixels.push(p(5, 8, belly)); pixels.push(p(6, 8, belly));
   pixels.push(p(5, 9, belly)); pixels.push(p(6, 9, belly));
 
@@ -86,7 +87,7 @@ export function createDogSVG(frame: CowFrame): string {
     pixels.push(p(8, 11, fur)); pixels.push(p(8, 12, dark));
   }
 
-  // Tail (wagging)
+  // Tail
   if (frame === 'happy') {
     pixels.push(p(10, 6, fur)); pixels.push(p(11, 5, fur));
     pixels.push(p(12, 4, fur)); pixels.push(p(12, 3, fur));
@@ -97,24 +98,38 @@ export function createDogSVG(frame: CowFrame): string {
     pixels.push(p(12, 7, fur));
   }
 
-  // Effects
+  // 吃东西：草 + 碎屑
+  if (frame === 'eat') {
+    pixels.push(p(0, 2, '#228B22')); pixels.push(p(1, 2, '#90EE90'));
+    pixels.push(p(1, 1, '#90EE90'));
+    pixels.push(p(11, 3, '#90EE90')); pixels.push(p(10, 3, '#90EE90'));
+  }
+
+  // 睡觉：枕头 + Zzz
+  if (frame === 'sleep') {
+    pixels.push(p(0, 9, '#E6E6FA')); pixels.push(p(1, 9, '#E6E6FA'));
+    pixels.push(p(2, 9, '#E6E6FA'));
+    pixels.push(p(0, 10, '#E6E6FA')); pixels.push(p(1, 10, '#E6E6FA'));
+    pixels.push(p(2, 10, '#E6E6FA'));
+    pixels.push(p(0, 11, '#9370DB')); pixels.push(p(1, 11, '#9370DB'));
+    pixels.push(p(2, 11, '#9370DB'));
+    pixels.push(p(10, 0, '#87CEEB')); pixels.push(p(11, 0, '#87CEEB'));
+    pixels.push(p(12, 1, '#5DADE2')); pixels.push(p(13, 1, '#5DADE2'));
+    pixels.push(p(14, 2, '#3498DB'));
+  }
+
+  // 摸头：爱心 + 星星
   if (frame === 'react') {
-    pixels.push(p(12, 1, '#FF69B4')); pixels.push(p(13, 1, '#FF69B4'));
-    pixels.push(p(11, 2, '#FF69B4')); pixels.push(p(12, 2, '#FF69B4'));
-    pixels.push(p(13, 2, '#FF69B4')); pixels.push(p(14, 2, '#FF69B4'));
-    pixels.push(p(12, 3, '#FF69B4')); pixels.push(p(13, 3, '#FF69B4'));
-    pixels.push(p(12, 4, '#FF69B4'));
+    pixels.push(p(12, 0, '#FF69B4')); pixels.push(p(13, 0, '#FF69B4'));
+    pixels.push(p(11, 1, '#FF69B4')); pixels.push(p(12, 1, '#FF69B4'));
+    pixels.push(p(13, 1, '#FF69B4')); pixels.push(p(14, 1, '#FF69B4'));
+    pixels.push(p(12, 2, '#FF69B4')); pixels.push(p(13, 2, '#FF69B4'));
+    pixels.push(p(12, 3, '#FF69B4'));
+    pixels.push(p(0, 0, '#FFD700'));
   }
   if (frame === 'happy') {
     pixels.push(p(0, 0, '#FFD700')); pixels.push(p(13, 0, '#FFD700'));
-  }
-  if (frame === 'sleep') {
-    pixels.push(p(11, 0, '#87CEEB')); pixels.push(p(12, 0, '#87CEEB'));
-    pixels.push(p(12, 1, '#87CEEB')); pixels.push(p(13, 1, '#87CEEB'));
-    pixels.push(p(13, 2, '#87CEEB'));
-  }
-  if (frame === 'eat') {
-    pixels.push(p(0, 3, '#90EE90')); pixels.push(p(11, 3, '#90EE90'));
+    pixels.push(p(0, 3, '#FF69B4')); pixels.push(p(1, 3, '#FF69B4'));
   }
   if (frame === 'grabbed') {
     pixels.push(p(1, 0, '#87CEEB')); pixels.push(p(10, 0, '#87CEEB'));

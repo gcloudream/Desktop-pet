@@ -36,6 +36,8 @@ html, body {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   position: relative;
+  transform-origin: center center;
+  transition: transform 0.3s ease;
 }
 
 .cow-sprite {
@@ -132,12 +134,12 @@ html, body {
   100% { transform: scaleY(1) scaleX(1); }
 }
 
-/* 气泡 — 像素风格 */
+/* 气泡 — 像素风格，显示在小牛右侧 */
 .bubble {
   position: absolute;
-  bottom: 70px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  left: 72px;
+  transform: translateY(-50%);
   background: #fff;
   color: #222;
   padding: 6px 10px;
@@ -156,18 +158,18 @@ html, body {
   image-rendering: pixelated;
 }
 
+/* 箭头指向左边（指向小牛） */
 .bubble::after {
   content: '';
   position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: -8px;
+  top: 50%;
   width: 8px;
   height: 8px;
   background: #fff;
-  border-right: 2px solid #333;
+  border-left: 2px solid #333;
   border-bottom: 2px solid #333;
-  transform: translateX(-50%) rotate(45deg);
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .bubble.hidden {
@@ -175,8 +177,8 @@ html, body {
 }
 
 @keyframes bubbleIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
 }
 
 /* 右键菜单 — 像素风格 */

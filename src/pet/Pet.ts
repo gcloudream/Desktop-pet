@@ -386,7 +386,10 @@ export class Pet {
   respawn(): void {
     this.isVisible = true; this.container.style.display = 'block';
     this.physics.setPosition(window.innerWidth / 2, window.innerHeight - this.config.groundOffset - this.config.petSize);
-    this.physics.setVelocity(0, 0); this.stateMachine.transition('idle');
+    this.physics.setVelocity(0, 0);
+    this.physics.adoptSurfaceFromPosition();
+    this.applySurfaceRotation();
+    this.stateMachine.transition('idle');
     this.updateContainerPosition(); this.showBubble("牛牛回来啦！哞～");
   }
 
@@ -440,22 +443,37 @@ export class Pet {
     switch (s) {
       case 'idle': this.updateIdle(); this.updateAvoidCursor(); break;
       case 'walk-left': case 'walk-right': this.updateWalk(); this.updateAvoidCursor(); break;
-      case 'fall': break; // 重力在 physics.update() 中处理
+      case 'fall': break;
       case 'land': break;
       case 'sleep': this.updateSleep(); break;
       case 'eat': break;
       case 'grabbed': return;
     }
     const { hitGround, hitEdge } = this.physics.update();
+
+    // 落地处理
     if (s === 'fall' && hitGround && !this.physics.bouncing) {
+      this.physics.adoptSurfaceFromPosition();
+      this.applySurfaceRotation();
       this.stateMachine.transition('land');
       setTimeout(() => { if (this.stateMachine.state === 'land') this.stateMachine.transition('idle'); }, 300);
     }
-    if (hitEdge && (s === 'walk-left' || s === 'walk-right')) {
-      const d = hitEdge === 'left' ? 'right' : 'left';
-      this.physics.walk(d);
-      this.stateMachine.transition(d === 'left' ? 'walk-left' : 'walk-right');
+
+    // 表面切换（走到角落自动转弯）
+    if (this.physics.surfaceChanged) {
+      this.applySurfaceRotation();
+      // 转角时反转方向：底面left→左墙right(上)，底面right→右墙left(上)
+      const curDir = s === 'walk-left' ? 'left' : 'right';
+      const newDir = curDir === 'left' ? 'right' : 'left';
+      this.physics.walk(newDir);
+      this.stateMachine.transition(newDir === 'left' ? 'walk-left' : 'walk-right');
     }
+
+    // 边缘反弹（弹跳模式下碰到墙）
+    if (hitEdge && this.physics.bouncing) {
+      // 弹跳中的边缘碰撞由 physics 处理
+    }
+
     this.updateContainerPosition();
   }
 
@@ -494,6 +512,18 @@ export class Pet {
       this.stateMachine.transition(dir === 'left' ? 'walk-left' : 'walk-right');
       this.avoidCooldown = 20;
     }
+  }
+
+  private applySurfaceRotation(): void {
+    const surface = this.physics.surface;
+    let rotation = 0;
+    switch (surface) {
+      case 'bottom': rotation = 0; break;
+      case 'left': rotation = 90; break;
+      case 'top': rotation = 180; break;
+      case 'right': rotation = -90; break;
+    }
+    this.spriteEl.style.transform = `rotate(${rotation}deg)`;
   }
 
   private updateContainerPosition(): void {
