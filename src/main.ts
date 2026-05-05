@@ -1,5 +1,5 @@
 import { Pet } from './pet/Pet';
-import { createCowSVG } from './pet/CowSprite';
+import { createCowSVG, CowFrame } from './pet/CowSprite';
 
 // Set initial cow sprite
 function initSprite(): void {
@@ -15,7 +15,7 @@ function initSprite(): void {
     let frame = 0;
     setInterval(() => {
       const currentState = petEl.className;
-      if (currentState.includes('idle')) {
+      if (currentState.includes('idle') && !currentState.includes('grabbed')) {
         svgContainer.innerHTML = createCowSVG(frame % 2 === 0 ? 'idle1' : 'idle2');
         frame++;
       }
@@ -39,12 +39,52 @@ function initSprite(): void {
       }
     }, 200);
 
+    // Animate sleep (slow breathing)
+    let sleepFrame = 0;
+    setInterval(() => {
+      const currentState = petEl.className;
+      if (currentState.includes('sleep')) {
+        svgContainer.innerHTML = createCowSVG(sleepFrame % 2 === 0 ? 'sleep' : 'idle2');
+        sleepFrame++;
+      }
+    }, 2000);
+
+    // Animate eat (chomping)
+    let eatFrame = 0;
+    setInterval(() => {
+      const currentState = petEl.className;
+      if (currentState.includes('eat')) {
+        svgContainer.innerHTML = createCowSVG(eatFrame % 2 === 0 ? 'eat' : 'idle1');
+        eatFrame++;
+      }
+    }, 400);
+
+    // Animate happy (wagging tail)
+    let happyFrame = 0;
+    setInterval(() => {
+      const currentState = petEl.className;
+      if (currentState.includes('happy')) {
+        svgContainer.innerHTML = createCowSVG(happyFrame % 2 === 0 ? 'happy' : 'react');
+        happyFrame++;
+      }
+    }, 250);
+
+    // Animate grabbed (surprised)
+    setInterval(() => {
+      const currentState = petEl.className;
+      if (currentState.includes('grabbed')) {
+        svgContainer.innerHTML = createCowSVG('grabbed');
+      }
+    }, 150);
+
     // Animate react
     const observer = new MutationObserver(() => {
-      if (petEl.className.includes('react')) {
+      if (petEl.className.includes('react') && !petEl.className.includes('happy')) {
         svgContainer.innerHTML = createCowSVG('react');
         setTimeout(() => {
-          svgContainer.innerHTML = createCowSVG('idle1');
+          if (!petEl.className.includes('happy')) {
+            svgContainer.innerHTML = createCowSVG('idle1');
+          }
         }, 500);
       }
     });

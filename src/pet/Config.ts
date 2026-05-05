@@ -6,6 +6,9 @@ export interface PetConfig {
   bubbleDuration: number;
   petSize: number;
   groundOffset: number;
+  sleepDelay: number;      // 闲置多久进入睡觉 (ms)
+  eatChance: number;       // 闲置时吃东西概率
+  happyChance: number;     // 被摸后开心概率
 }
 
 export interface CareMessages {
@@ -14,6 +17,10 @@ export interface CareMessages {
   evening: string[];
   random: string[];
   click: string[];
+  sleep: string[];
+  eat: string[];
+  happy: string[];
+  grabbed: string[];
 }
 
 export const DEFAULT_CONFIG: PetConfig = {
@@ -24,6 +31,9 @@ export const DEFAULT_CONFIG: PetConfig = {
   bubbleDuration: 4000,
   petSize: 64,
   groundOffset: 32,
+  sleepDelay: 30000,     // 30秒不动就睡觉
+  eatChance: 0.15,       // 15% 概率吃东西
+  happyChance: 0.4,      // 40% 概率开心
 };
 
 export const CARE_MESSAGES: CareMessages = {
@@ -57,5 +67,29 @@ export const CARE_MESSAGES: CareMessages = {
     "再摸摸嘛",
     "牛牛最喜欢你了",
     "嘿嘿嘿，痒痒的",
+  ],
+  sleep: [
+    "哞...哞...（打呼噜）",
+    "牛牛睡着了...zZZ",
+    "（梦里吃草中...）",
+    "嘘...牛牛在睡觉",
+  ],
+  eat: [
+    "哞～草草好吃！",
+    "嚼嚼嚼...真香",
+    "（大口吃草中）",
+    "吃饱了才有力气陪你！",
+  ],
+  happy: [
+    "哞哞哞～超开心！",
+    "牛牛尾巴摇疯啦！",
+    "幸福得冒泡泡～",
+    "最喜欢小宝了！哞～",
+  ],
+  grabbed: [
+    "哇！飞起来啦！",
+    "哞～好高好高！",
+    "放开牛牛！...开玩笑的",
+    "（惊恐的小牛眼神）",
   ],
 };

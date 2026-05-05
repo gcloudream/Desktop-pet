@@ -17,6 +17,7 @@ export class Physics {
   private screenWidth: number;
   private screenHeight: number;
   private isGrounded: boolean = false;
+  private bounceCount: number = 0;
 
   constructor(config: PetConfig) {
     this.config = config;
@@ -76,6 +77,14 @@ export class Physics {
     this.isGrounded = false;
   }
 
+  // 让小牛被抛起（拖拽释放时给一个初速度）
+  throwUp(vx: number, vy: number): void {
+    this.velocity.vx = vx;
+    this.velocity.vy = vy;
+    this.isGrounded = false;
+    this.bounceCount = 0;
+  }
+
   update(): { hitGround: boolean; hitEdge: 'left' | 'right' | null } {
     let hitGround = false;
     let hitEdge: 'left' | 'right' | null = null;
@@ -84,13 +93,24 @@ export class Physics {
     this.position.x += this.velocity.vx;
     this.position.y += this.velocity.vy;
 
-    // Ground collision
+    // Ground collision with bounce
     const groundY = this.screenHeight - this.config.groundOffset - this.config.petSize;
     if (this.position.y >= groundY) {
       this.position.y = groundY;
-      this.velocity.vy = 0;
+
       if (!this.isGrounded) {
         hitGround = true;
+      }
+
+      // Bounce: reduce velocity each time
+      if (Math.abs(this.velocity.vy) > 2 && this.bounceCount < 3) {
+        this.velocity.vy = -this.velocity.vy * 0.4; // bounce with 40% energy
+        this.velocity.vx *= 0.7; // friction
+        this.bounceCount++;
+      } else {
+        this.velocity.vy = 0;
+        this.velocity.vx = 0;
+        this.bounceCount = 0;
       }
       this.isGrounded = true;
     }
@@ -98,11 +118,11 @@ export class Physics {
     // Edge collision
     if (this.position.x <= 0) {
       this.position.x = 0;
-      this.velocity.vx = 0;
+      this.velocity.vx = Math.abs(this.velocity.vx) * 0.5; // bounce off wall
       hitEdge = 'left';
     } else if (this.position.x >= this.screenWidth - this.config.petSize) {
       this.position.x = this.screenWidth - this.config.petSize;
-      this.velocity.vx = 0;
+      this.velocity.vx = -Math.abs(this.velocity.vx) * 0.5;
       hitEdge = 'right';
     }
 

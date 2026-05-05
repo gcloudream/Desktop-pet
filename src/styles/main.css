@@ -44,6 +44,7 @@ html, body {
   image-rendering: pixelated;
 }
 
+/* 走路动画 */
 .pet.walk-left .cow-sprite {
   animation: cowWalk 0.4s steps(2) infinite;
 }
@@ -58,6 +59,7 @@ html, body {
   50% { margin-top: -2px; }
 }
 
+/* 掉落动画 */
 .pet.fall .cow-sprite {
   animation: cowFall 0.3s ease-in infinite;
 }
@@ -67,6 +69,17 @@ html, body {
   50% { transform: rotate(5deg); }
 }
 
+/* 被抓动画 — 惊恐抖动 */
+.pet.grabbed .cow-sprite {
+  animation: cowGrabbed 0.15s ease-in-out infinite;
+}
+
+@keyframes cowGrabbed {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+/* 反应动画 */
 .pet.react .cow-sprite {
   animation: cowReact 0.2s ease-out;
 }
@@ -77,6 +90,49 @@ html, body {
   100% { transform: scale(1); }
 }
 
+/* 睡觉动画 — 缓慢呼吸 */
+.pet.sleep .cow-sprite {
+  animation: cowSleep 3s ease-in-out infinite;
+}
+
+@keyframes cowSleep {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
+}
+
+/* 吃东西动画 — 前后摇晃 */
+.pet.eat .cow-sprite {
+  animation: cowEat 0.4s ease-in-out infinite;
+}
+
+@keyframes cowEat {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg) translateY(1px); }
+  75% { transform: rotate(3deg) translateY(1px); }
+}
+
+/* 开心动画 — 弹跳 + 摇尾巴 */
+.pet.happy .cow-sprite {
+  animation: cowHappy 0.3s ease-in-out infinite;
+}
+
+@keyframes cowHappy {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.05); }
+}
+
+/* 着地动画 */
+.pet.land .cow-sprite {
+  animation: cowLand 0.3s ease-out;
+}
+
+@keyframes cowLand {
+  0% { transform: scaleY(0.8) scaleX(1.1); }
+  50% { transform: scaleY(1.1) scaleX(0.95); }
+  100% { transform: scaleY(1) scaleX(1); }
+}
+
+/* 气泡 */
 .bubble {
   position: absolute;
   bottom: 70px;
@@ -118,6 +174,7 @@ html, body {
   to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
+/* 右键菜单 */
 .context-menu {
   position: fixed;
   background: white;

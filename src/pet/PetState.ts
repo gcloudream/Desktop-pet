@@ -1,4 +1,14 @@
-export type PetStateType = 'idle' | 'walk-left' | 'walk-right' | 'fall' | 'land' | 'react';
+export type PetStateType =
+  | 'idle'
+  | 'walk-left'
+  | 'walk-right'
+  | 'fall'
+  | 'land'
+  | 'react'
+  | 'grabbed'   // 被拖拽中
+  | 'sleep'     // 睡觉
+  | 'eat'       // 吃东西
+  | 'happy';    // 开心摇尾巴
 
 export interface StateTransition {
   from: PetStateType;

@@ -19,6 +19,11 @@ export class Pet {
   private lastInteractionTime: number = Date.now();
   private isCursorOverPet: boolean = false;
 
+  // 拖拽相关
+  private dragStartPos: { x: number; y: number } = { x: 0, y: 0 };
+  private dragLastPos: { x: number; y: number } = { x: 0, y: 0 };
+  private dragVelocity: { vx: number; vy: number } = { vx: 0, vy: 0 };
+
   constructor(container: HTMLElement, config: Partial<PetConfig> = {}) {
     this.container = container;
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -54,13 +59,38 @@ export class Pet {
     this.container.addEventListener('click', (e) => {
       if (this.isDragging) return;
       e.stopPropagation();
-      this.stateMachine.transition('react');
-      this.showBubble(this.getRandomMessage('click'));
-      setTimeout(() => {
-        if (this.stateMachine.state === 'react') {
-          this.stateMachine.transition('idle');
-        }
-      }, 500);
+
+      // 从睡觉状态唤醒
+      if (this.stateMachine.state === 'sleep') {
+        this.stateMachine.transition('happy');
+        this.showBubble(this.getRandomMessage('happy'));
+        setTimeout(() => {
+          if (this.stateMachine.state === 'happy') {
+            this.stateMachine.transition('idle');
+          }
+        }, 1500);
+        this.lastInteractionTime = Date.now();
+        return;
+      }
+
+      // 被点击 → 开心或反应
+      if (Math.random() < this.config.happyChance) {
+        this.stateMachine.transition('happy');
+        this.showBubble(this.getRandomMessage('happy'));
+        setTimeout(() => {
+          if (this.stateMachine.state === 'happy') {
+            this.stateMachine.transition('idle');
+          }
+        }, 1500);
+      } else {
+        this.stateMachine.transition('react');
+        this.showBubble(this.getRandomMessage('click'));
+        setTimeout(() => {
+          if (this.stateMachine.state === 'react') {
+            this.stateMachine.transition('idle');
+          }
+        }, 500);
+      }
       this.lastInteractionTime = Date.now();
     });
   }
@@ -69,6 +99,8 @@ export class Pet {
     let startX = 0, startY = 0;
     let startPosX = 0, startPosY = 0;
     let moved = false;
+    let lastMoveTime = 0;
+    let lastMoveX = 0, lastMoveY = 0;
 
     this.container.addEventListener('mousedown', (e) => {
       e.preventDefault();
@@ -78,29 +110,61 @@ export class Pet {
       startY = e.clientY;
       startPosX = this.physics.pos.x;
       startPosY = this.physics.pos.y;
+      lastMoveX = e.clientX;
+      lastMoveY = e.clientY;
+      lastMoveTime = Date.now();
+      this.dragVelocity = { vx: 0, vy: 0 };
 
       const onMove = (e: MouseEvent) => {
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
         if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-          this.isDragging = true;
-          moved = true;
+          if (!this.isDragging) {
+            // 刚开始拖拽
+            this.isDragging = true;
+            this.stateMachine.transition('grabbed');
+            this.showBubble(this.getRandomMessage('grabbed'));
+          }
+
+          // 计算拖拽速度（用于抛出）
+          const now = Date.now();
+          const dt = now - lastMoveTime;
+          if (dt > 0) {
+            this.dragVelocity.vx = (e.clientX - lastMoveX) / dt * 16; // 归一化到帧
+            this.dragVelocity.vy = (e.clientY - lastMoveY) / dt * 16;
+          }
+          lastMoveX = e.clientX;
+          lastMoveY = e.clientY;
+          lastMoveTime = now;
+
           this.physics.setPosition(startPosX + dx, startPosY + dy);
           this.updateContainerPosition();
-          this.stateMachine.transition('idle');
         }
       };
 
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
-        if (moved) {
+        if (moved || this.isDragging) {
           this.isDragging = false;
-          // Drop if not on ground
-          const groundY = window.innerHeight - this.config.groundOffset - this.config.petSize;
-          if (this.physics.pos.y < groundY - 5) {
-            this.physics.applyGravity();
+
+          // 根据拖拽速度抛出小牛
+          const throwVx = this.dragVelocity.vx * 0.5;
+          const throwVy = Math.min(this.dragVelocity.vy * 0.5, 5); // 限制向上速度
+
+          if (Math.abs(throwVx) > 0.5 || throwVy < -1) {
+            // 有速度 → 抛出
+            this.physics.throwUp(throwVx, throwVy);
             this.stateMachine.transition('fall');
+          } else {
+            // 无速度 → 检查是否需要掉落
+            const groundY = window.innerHeight - this.config.groundOffset - this.config.petSize;
+            if (this.physics.pos.y < groundY - 5) {
+              this.physics.applyGravity();
+              this.stateMachine.transition('fall');
+            } else {
+              this.stateMachine.transition('idle');
+            }
           }
         }
       };
@@ -123,8 +187,6 @@ export class Pet {
   }
 
   private setupCursorTracking(): void {
-    // Track mouse position to detect when cursor is over the pet
-    // This allows us to dynamically toggle click-through behavior
     document.addEventListener('mousemove', (e: MouseEvent) => {
       const petRect = this.container.getBoundingClientRect();
       const isOver = (
@@ -136,7 +198,6 @@ export class Pet {
 
       if (isOver !== this.isCursorOverPet) {
         this.isCursorOverPet = isOver;
-        // Tell Tauri to toggle click-through
         this.toggleCursorEvents(!isOver);
       }
     });
@@ -144,11 +205,9 @@ export class Pet {
 
   private async toggleCursorEvents(ignore: boolean): Promise<void> {
     try {
-      // Use Tauri API to set ignore cursor events
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('set_ignore_cursor_events', { ignore });
     } catch (e) {
-      // Fallback: might not be in Tauri context
       console.log('Cursor events toggle:', ignore);
     }
   }
@@ -163,6 +222,8 @@ export class Pet {
     const items = [
       { icon: this.isVisible ? '🙈' : '👀', text: this.isVisible ? '隐藏小牛' : '显示小牛', action: () => this.toggleVisibility() },
       { icon: '🔄', text: '重新召唤', action: () => this.respawn() },
+      { icon: '💤', text: '让牛牛睡觉', action: () => this.forceSleep() },
+      { icon: '🍽️', text: '喂牛牛吃草', action: () => this.forceEat() },
       { divider: true },
       { icon: '❌', text: '退出', action: () => this.quit() },
     ];
@@ -199,6 +260,23 @@ export class Pet {
   private toggleVisibility(): void {
     this.isVisible = !this.isVisible;
     this.container.style.display = this.isVisible ? 'block' : 'none';
+  }
+
+  private forceSleep(): void {
+    this.physics.stop();
+    this.stateMachine.transition('sleep');
+    this.showBubble(this.getRandomMessage('sleep'));
+  }
+
+  private forceEat(): void {
+    this.physics.stop();
+    this.stateMachine.transition('eat');
+    this.showBubble(this.getRandomMessage('eat'));
+    setTimeout(() => {
+      if (this.stateMachine.state === 'eat') {
+        this.stateMachine.transition('idle');
+      }
+    }, 3000);
   }
 
   respawn(): void {
@@ -282,22 +360,38 @@ export class Pet {
       case 'land':
         this.updateLand();
         break;
+      case 'sleep':
+        this.updateSleep();
+        break;
+      case 'eat':
+        this.updateEat();
+        break;
+      case 'grabbed':
+        // 被抓时不更新物理
+        return;
     }
 
     const { hitGround, hitEdge } = this.physics.update();
 
+    // 落地处理（带弹跳）
     if (state === 'fall' && hitGround) {
-      this.stateMachine.transition('land');
-      setTimeout(() => {
-        if (this.stateMachine.state === 'land') {
-          this.stateMachine.transition('idle');
-        }
-      }, 300);
+      if (Math.abs(this.physics.pos.y - (window.innerHeight - this.config.groundOffset - this.config.petSize)) < 2) {
+        // 真正着地了
+        this.stateMachine.transition('land');
+        setTimeout(() => {
+          if (this.stateMachine.state === 'land') {
+            this.stateMachine.transition('idle');
+          }
+        }, 300);
+      }
+      // 否则还在弹跳中，保持 fall 状态
     }
 
+    // 边缘处理 — 转向而不是停住
     if (hitEdge && (state === 'walk-left' || state === 'walk-right')) {
-      this.physics.stop();
-      this.stateMachine.transition('idle');
+      const newDir = hitEdge === 'left' ? 'right' : 'left';
+      this.physics.walk(newDir);
+      this.stateMachine.transition(newDir === 'left' ? 'walk-left' : 'walk-right');
     }
 
     this.updateContainerPosition();
@@ -305,14 +399,29 @@ export class Pet {
 
   private updateIdle(): void {
     const idleTime = this.stateMachine.stateAge;
+
+    // 闲置太久 → 睡觉
+    if (idleTime > this.config.sleepDelay) {
+      this.stateMachine.transition('sleep');
+      this.showBubble(this.getRandomMessage('sleep'));
+      return;
+    }
+
     const maxIdle = this.randRange(this.config.idleDuration[0], this.config.idleDuration[1]) * 1000;
 
     if (idleTime > maxIdle) {
-      if (Math.random() < 0.8) {
+      const rand = Math.random();
+      if (rand < this.config.eatChance) {
+        // 吃东西
+        this.stateMachine.transition('eat');
+        this.showBubble(this.getRandomMessage('eat'));
+      } else if (rand < this.config.eatChance + 0.7) {
+        // 走路
         const direction = Math.random() < 0.5 ? 'left' : 'right';
         this.physics.walk(direction);
         this.stateMachine.transition(direction === 'left' ? 'walk-left' : 'walk-right');
       }
+      // 否则继续 idle
     }
   }
 
@@ -338,6 +447,18 @@ export class Pet {
 
   private updateLand(): void {
     // Landing state is handled by setTimeout in update()
+  }
+
+  private updateSleep(): void {
+    // 睡觉中被打扰（随机醒来）
+    if (Math.random() < 0.0005) {
+      this.stateMachine.transition('idle');
+      this.showBubble("哞～牛牛睡醒了！");
+    }
+  }
+
+  private updateEat(): void {
+    // 吃东西状态由 setTimeout 控制，这里不做额外处理
   }
 
   private updateContainerPosition(): void {
