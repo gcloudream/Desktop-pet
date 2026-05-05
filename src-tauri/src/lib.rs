@@ -11,6 +11,13 @@ fn set_ignore_cursor_events(window: Window, ignore: bool) -> Result<(), String> 
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn get_cursor_position(window: Window) -> Result<(f64, f64), String> {
+    let pos = window.cursor_position().map_err(|e| e.to_string())?;
+    let scale = window.scale_factor().unwrap_or(1.0);
+    Ok((pos.x / scale, pos.y / scale))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -81,7 +88,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![set_ignore_cursor_events])
+        .invoke_handler(tauri::generate_handler![set_ignore_cursor_events, get_cursor_position])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
