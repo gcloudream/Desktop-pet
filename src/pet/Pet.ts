@@ -3,6 +3,7 @@ import { Physics, Position } from './Physics';
 import { PetConfig, CARE_MESSAGES, DEFAULT_CONFIG } from './Config';
 import { getTimeMessages, getTimeState } from './TimeAwareness';
 import { AchievementManager } from './Achievement';
+import { ScreenTimeTracker } from './ScreenTime';
 
 export class Pet {
   private container: HTMLElement;
@@ -28,6 +29,7 @@ export class Pet {
   private focusEndTime: number = 0;
   private focusTickTimer: ReturnType<typeof setInterval> | null = null;
   private achievements: AchievementManager;
+  private screenTime: ScreenTimeTracker;
   private dragStartPos: { x: number; y: number } = { x: 0, y: 0 };
   private dragLastPos: { x: number; y: number } = { x: 0, y: 0 };
   private dragVelocity: { vx: number; vy: number } = { vx: 0, vy: 0 };
@@ -42,6 +44,14 @@ export class Pet {
     this.achievements = new AchievementManager();
     this.achievements.setOnUnlock((a) => {
       this.showBubble(`🏆 解锁成就: ${a.icon} ${a.name}！`);
+    });
+    this.screenTime = new ScreenTimeTracker();
+    this.screenTime.setOnMilestone((min, msg) => {
+      this.showBubble(`⏰ ${msg}`);
+      if (min >= 120) {
+        this.stateMachine.transition('react');
+        setTimeout(() => { if (this.stateMachine.state === 'react') this.stateMachine.transition('idle'); }, 2000);
+      }
     });
     this.setupStateMachine();
     this.setupInteraction();
@@ -123,6 +133,9 @@ export class Pet {
       { icon: '🏆', text: `成就 (${this.achievements.getUnlockedCount()}/${this.achievements.getTotalCount()})`, action: () => { this.showAchievements(); }},
       { icon: '⏱️', text: this.focusTimer ? '停止专注' : '番茄钟', action: () => {
         if (this.focusTimer) this.stopFocus(); else this.startFocus();
+      }},
+      { icon: '🖥️', text: `屏幕 ${this.screenTime.getFormattedTime()}`, action: () => {
+        this.showBubble(this.screenTime.getTimeMessage());
       }},
     ];
 
@@ -535,6 +548,10 @@ export class Pet {
 
   private randRange(min: number, max: number): number { return min + Math.random() * (max - min); }
 
+  getScreenTimeFatigue(): string {
+    return this.screenTime.getFatigueLevel();
+  }
+
   destroy(): void {
     cancelAnimationFrame(this.animationFrame);
     if (this.careTimer) clearTimeout(this.careTimer);
@@ -543,5 +560,6 @@ export class Pet {
     this.hideContextMenu();
     this.hideInteractionMenu();
     this.achievements.destroy();
+    this.screenTime.destroy();
   }
 }

@@ -33,9 +33,11 @@ function initSprite(): void {
       svgContainer.appendChild(accessoryEl.firstChild as Node);
     }
 
-    // Helper to render current skin
+    // Helper to render current skin with fatigue
     const render = (frame: CowFrame) => {
-      svgContainer.innerHTML = skinManager.render(frame);
+      const pet = (window as any).__pet;
+      const fatigue = pet?.getScreenTimeFatigue?.() || 'normal';
+      svgContainer.innerHTML = skinManager.render(frame, fatigue);
     };
 
     // Animate idle frames

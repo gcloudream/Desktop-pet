@@ -1,5 +1,5 @@
 // Skin manager — register and switch between pet skins
-import { CowFrame, createCowSVG } from './CowSprite';
+import { CowFrame, FatigueLevel, createCowSVG } from './CowSprite';
 import { createCatSVG } from './CatSprite';
 import { createDogSVG } from './DogSprite';
 
@@ -7,7 +7,7 @@ export interface Skin {
   id: string;
   name: string;
   icon: string;
-  render: (frame: CowFrame) => string;
+  render: (frame: CowFrame, fatigue?: FatigueLevel) => string;
 }
 
 const BUILTIN_SKINS: Skin[] = [
@@ -46,7 +46,7 @@ export class SkinManager {
     return this.current;
   }
 
-  render(frame: CowFrame): string {
-    return this.current.render(frame);
+  render(frame: CowFrame, fatigue?: FatigueLevel): string {
+    return this.current.render(frame, fatigue);
   }
 }

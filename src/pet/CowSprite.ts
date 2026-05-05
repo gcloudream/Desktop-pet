@@ -2,8 +2,9 @@
 // Each "pixel" is 4x4 real pixels for crisp 32x32 look at 64x64 display
 
 export type CowFrame = 'idle1' | 'idle2' | 'walk1' | 'walk2' | 'fall' | 'react' | 'grabbed' | 'sleep' | 'eat' | 'happy';
+export type FatigueLevel = 'fresh' | 'normal' | 'tired' | 'exhausted';
 
-export function createCowSVG(frame: CowFrame): string {
+export function createCowSVG(frame: CowFrame, fatigue: FatigueLevel = 'normal'): string {
   const p = (x: number, y: number, color: string) =>
     `<rect x="${x*4}" y="${y*4}" width="4" height="4" fill="${color}"/>`;
 
@@ -210,6 +211,20 @@ export function createCowSVG(frame: CowFrame): string {
   if (frame === 'grabbed') {
     pixels.push(p(1, 0, '#87CEEB')); pixels.push(p(0, 1, '#87CEEB'));
     pixels.push(p(10, 0, '#87CEEB')); pixels.push(p(11, 1, '#87CEEB'));
+  }
+
+  // 疲劳效果（idle 状态下根据屏幕时间显示）
+  if ((frame === 'idle1' || frame === 'idle2') && fatigue === 'tired') {
+    // 轻微黑眼圈
+    pixels.push(p(3, 4, '#C0A0A0')); pixels.push(p(8, 4, '#C0A0A0'));
+  }
+  if ((frame === 'idle1' || frame === 'idle2') && fatigue === 'exhausted') {
+    // 明显黑眼圈 + 下垂眼
+    pixels.push(p(3, 4, '#A08080')); pixels.push(p(4, 4, '#A08080'));
+    pixels.push(p(7, 4, '#A08080')); pixels.push(p(8, 4, '#A08080'));
+    // 下垂眼皮
+    pixels.push(p(3, 2, '#C0A0A0')); pixels.push(p(4, 2, '#C0A0A0'));
+    pixels.push(p(7, 2, '#C0A0A0')); pixels.push(p(8, 2, '#C0A0A0'));
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 56" shape-rendering="crispEdges">${pixels.join('')}</svg>`;
