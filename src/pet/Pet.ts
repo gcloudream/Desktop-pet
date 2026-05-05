@@ -4,6 +4,8 @@ import { PetConfig, CARE_MESSAGES, DEFAULT_CONFIG } from './Config';
 import { getTimeMessages, getTimeState } from './TimeAwareness';
 import { AchievementManager } from './Achievement';
 import { ScreenTimeTracker } from './ScreenTime';
+import { WeatherManager } from './Weather';
+import { WeatherOverlay } from './WeatherOverlay';
 
 export class Pet {
   private container: HTMLElement;
@@ -30,6 +32,8 @@ export class Pet {
   private focusTickTimer: ReturnType<typeof setInterval> | null = null;
   private achievements: AchievementManager;
   private screenTime: ScreenTimeTracker;
+  private weather: WeatherManager;
+  private weatherOverlay: WeatherOverlay;
   private dragStartPos: { x: number; y: number } = { x: 0, y: 0 };
   private dragLastPos: { x: number; y: number } = { x: 0, y: 0 };
   private dragVelocity: { vx: number; vy: number } = { vx: 0, vy: 0 };
@@ -52,6 +56,14 @@ export class Pet {
         this.stateMachine.transition('react');
         setTimeout(() => { if (this.stateMachine.state === 'react') this.stateMachine.transition('idle'); }, 2000);
       }
+    });
+    this.weather = new WeatherManager();
+    this.weatherOverlay = new WeatherOverlay(container);
+    this.weather.setOnUpdate((data) => {
+      this.weatherOverlay.setWeather(data.type);
+      this.weatherOverlay.updateAccessoryPosition(this.physics.surface);
+      const labels: Record<string, string> = { sunny: '☀️ 晴天', cloudy: '☁️ 阴天', rainy: '🌧️ 雨天', snowy: '❄️ 下雪' };
+      this.showBubble(`${labels[data.type] || '🌍'} ${data.temp}°C`);
     });
     this.setupStateMachine();
     this.setupInteraction();
@@ -136,6 +148,11 @@ export class Pet {
       }},
       { icon: '🖥️', text: `屏幕 ${this.screenTime.getFormattedTime()}`, action: () => {
         this.showBubble(this.screenTime.getTimeMessage());
+      }},
+      { icon: this.weather.type === 'sunny' ? '☀️' : this.weather.type === 'rainy' ? '🌧️' : this.weather.type === 'snowy' ? '❄️' : '☁️', text: `天气 ${this.weather.temp}°C`, action: () => {
+        const labels: Record<string, string> = { sunny: '☀️ 晴天', cloudy: '☁️ 阴天', rainy: '🌧️ 雨天', snowy: '❄️ 下雪' };
+        const tips: Record<string, string> = { sunny: '天气不错，出去走走？', cloudy: '有点阴，带件外套～', rainy: '下雨了，记得带伞！', snowy: '下雪了，注意保暖！' };
+        this.showBubble(`${labels[this.weather.type]} ${this.weather.temp}°C — ${tips[this.weather.type] || ''}`);
       }},
     ];
 
@@ -537,6 +554,7 @@ export class Pet {
       case 'right': rotation = -90; break;
     }
     this.spriteEl.style.transform = `rotate(${rotation}deg)`;
+    this.weatherOverlay.updateAccessoryPosition(surface);
   }
 
   private updateContainerPosition(): void {
@@ -561,5 +579,7 @@ export class Pet {
     this.hideInteractionMenu();
     this.achievements.destroy();
     this.screenTime.destroy();
+    this.weather.destroy();
+    this.weatherOverlay.destroy();
   }
 }

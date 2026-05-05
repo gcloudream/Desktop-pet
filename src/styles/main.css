@@ -242,3 +242,13 @@ html, body {
   background: #333;
   color: #fff;
 }
+
+/* 天气动画 */
+@keyframes sunPulse {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.weather-accessory {
+  image-rendering: pixelated;
+}
