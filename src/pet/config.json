@@ -1,0 +1,9 @@
+{
+  "walkSpeed": 1,
+  "idleDuration": [2, 8],
+  "walkDuration": [3, 12],
+  "gravity": 0.5,
+  "bubbleDuration": 4000,
+  "petSize": 64,
+  "groundOffset": 32
+}

@@ -1,0 +1,149 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow: hidden;
+  background: transparent !important;
+  background-color: transparent !important;
+  width: 100vw;
+  height: 100vh;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+#pet-container {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64px;
+  height: 96px;
+  cursor: grab;
+  z-index: 9999;
+}
+
+#pet-container:active {
+  cursor: grabbing;
+}
+
+.pet {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  position: relative;
+}
+
+.cow-sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+}
+
+.pet.walk-left .cow-sprite {
+  animation: cowWalk 0.4s steps(2) infinite;
+}
+
+.pet.walk-right .cow-sprite {
+  animation: cowWalk 0.4s steps(2) infinite;
+  transform: scaleX(-1);
+}
+
+@keyframes cowWalk {
+  0% { margin-top: 0; }
+  50% { margin-top: -2px; }
+}
+
+.pet.fall .cow-sprite {
+  animation: cowFall 0.3s ease-in infinite;
+}
+
+@keyframes cowFall {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.pet.react .cow-sprite {
+  animation: cowReact 0.2s ease-out;
+}
+
+@keyframes cowReact {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15) translateY(-4px); }
+  100% { transform: scale(1); }
+}
+
+.bubble {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: #333;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  pointer-events: none;
+  animation: bubbleIn 0.3s ease-out;
+  max-width: 200px;
+  text-align: center;
+}
+
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid white;
+}
+
+.bubble.hidden {
+  display: none;
+}
+
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.8); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  padding: 4px 0;
+  min-width: 150px;
+  z-index: 10000;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+}
+
+.context-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.context-menu-item:hover {
+  background: #f0f0f0;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 4px 0;
+}
