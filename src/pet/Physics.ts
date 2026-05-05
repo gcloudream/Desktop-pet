@@ -18,6 +18,7 @@ export class Physics {
   private screenHeight: number;
   private isGrounded: boolean = false;
   private bounceCount: number = 0;
+  private isInBounce: boolean = false;
 
   constructor(config: PetConfig) {
     this.config = config;
@@ -44,6 +45,10 @@ export class Physics {
     return this.isGrounded;
   }
 
+  get bouncing(): boolean {
+    return this.isInBounce;
+  }
+
   get atLeftEdge(): boolean {
     return this.position.x <= 0;
   }
@@ -66,10 +71,12 @@ export class Physics {
   walk(direction: 'left' | 'right'): void {
     this.velocity.vx = direction === 'left' ? -this.config.walkSpeed : this.config.walkSpeed;
     this.isGrounded = true;
+    this.isInBounce = false;
   }
 
   stop(): void {
     this.velocity.vx = 0;
+    this.isInBounce = false;
   }
 
   applyGravity(): void {
@@ -83,15 +90,27 @@ export class Physics {
     this.velocity.vy = vy;
     this.isGrounded = false;
     this.bounceCount = 0;
+    this.isInBounce = true;
   }
 
   update(): { hitGround: boolean; hitEdge: 'left' | 'right' | null } {
     let hitGround = false;
     let hitEdge: 'left' | 'right' | null = null;
 
+    // 如果在弹跳中，自动施加重力
+    if (this.isInBounce) {
+      this.velocity.vy += this.config.gravity;
+    }
+
     // Apply velocity
     this.position.x += this.velocity.vx;
     this.position.y += this.velocity.vy;
+
+    // 天花板限制 — 不能飞出屏幕顶部
+    if (this.position.y < 0) {
+      this.position.y = 0;
+      this.velocity.vy = Math.abs(this.velocity.vy) * 0.3; // 反弹下来
+    }
 
     // Ground collision with bounce
     const groundY = this.screenHeight - this.config.groundOffset - this.config.petSize;
@@ -102,15 +121,17 @@ export class Physics {
         hitGround = true;
       }
 
-      // Bounce: reduce velocity each time
-      if (Math.abs(this.velocity.vy) > 2 && this.bounceCount < 3) {
-        this.velocity.vy = -this.velocity.vy * 0.4; // bounce with 40% energy
-        this.velocity.vx *= 0.7; // friction
+      // Bounce: 只在弹跳模式下且速度足够时弹跳
+      if (this.isInBounce && this.velocity.vy > 1.5 && this.bounceCount < 2) {
+        this.velocity.vy = -this.velocity.vy * 0.25; // 只保留 25% 能量
+        this.velocity.vx *= 0.5; // 摩擦
         this.bounceCount++;
       } else {
+        // 停止弹跳
         this.velocity.vy = 0;
         this.velocity.vx = 0;
         this.bounceCount = 0;
+        this.isInBounce = false;
       }
       this.isGrounded = true;
     }
@@ -118,7 +139,7 @@ export class Physics {
     // Edge collision
     if (this.position.x <= 0) {
       this.position.x = 0;
-      this.velocity.vx = Math.abs(this.velocity.vx) * 0.5; // bounce off wall
+      this.velocity.vx = Math.abs(this.velocity.vx) * 0.5;
       hitEdge = 'left';
     } else if (this.position.x >= this.screenWidth - this.config.petSize) {
       this.position.x = this.screenWidth - this.config.petSize;
@@ -134,6 +155,10 @@ export class Physics {
     const groundY = this.screenHeight - this.config.groundOffset - this.config.petSize;
     if (this.position.y > groundY) {
       this.position.y = groundY;
+    }
+    // 天花板限制
+    if (this.position.y < 0) {
+      this.position.y = 0;
     }
   }
 

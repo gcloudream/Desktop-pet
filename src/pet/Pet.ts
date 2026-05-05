@@ -373,10 +373,10 @@ export class Pet {
 
     const { hitGround, hitEdge } = this.physics.update();
 
-    // 落地处理（带弹跳）
+    // 落地处理 — 用物理引擎的 bouncing 状态判断
     if (state === 'fall' && hitGround) {
-      if (Math.abs(this.physics.pos.y - (window.innerHeight - this.config.groundOffset - this.config.petSize)) < 2) {
-        // 真正着地了
+      if (!this.physics.bouncing) {
+        // 弹跳结束，真正着地
         this.stateMachine.transition('land');
         setTimeout(() => {
           if (this.stateMachine.state === 'land') {
