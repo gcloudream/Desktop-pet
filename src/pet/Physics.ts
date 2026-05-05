@@ -123,15 +123,17 @@ export class Physics {
 
       // Bounce: 只在弹跳模式下且速度足够时弹跳
       if (this.isInBounce && this.velocity.vy > 1.5 && this.bounceCount < 2) {
-        this.velocity.vy = -this.velocity.vy * 0.25; // 只保留 25% 能量
-        this.velocity.vx *= 0.5; // 摩擦
+        this.velocity.vy = -this.velocity.vy * 0.25;
+        this.velocity.vx *= 0.5;
         this.bounceCount++;
-      } else {
-        // 停止弹跳
+      } else if (this.isInBounce) {
+        // 弹跳结束 — 清零弹跳速度，保留行走速度
         this.velocity.vy = 0;
-        this.velocity.vx = 0;
         this.bounceCount = 0;
         this.isInBounce = false;
+      } else {
+        // 正常着地 — 只清零垂直速度
+        this.velocity.vy = 0;
       }
       this.isGrounded = true;
     }

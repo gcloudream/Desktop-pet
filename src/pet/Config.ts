@@ -24,7 +24,7 @@ export interface CareMessages {
 }
 
 export const DEFAULT_CONFIG: PetConfig = {
-  walkSpeed: 1,
+  walkSpeed: 1.5,
   idleDuration: [2, 8],
   walkDuration: [3, 12],
   gravity: 0.5,
