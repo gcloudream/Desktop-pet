@@ -23,6 +23,7 @@ jobs:
             target: linux
 
     runs-on: ${{ matrix.platform }}
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
@@ -92,6 +93,7 @@ jobs:
 
   publish:
     needs: build
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -116,6 +118,7 @@ jobs:
           ls -la release/
 
       - name: Create Release and Upload
+        if: hashFiles('release/*') != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
