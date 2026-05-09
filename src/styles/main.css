@@ -134,113 +134,219 @@ html, body {
   100% { transform: scaleY(1) scaleX(1); }
 }
 
-/* 气泡 — 像素风格，显示在小牛右侧 */
+/* 气泡 — 像素风格，支持四向定位（data-placement: right | left | top | bottom） */
 .bubble {
+  --bubble-bg: rgba(255, 255, 255, 0.97);
+  --bubble-fg: #1f1f1f;
+  --bubble-border: #2a2a2a;
+
   position: absolute;
-  top: 50%;
-  left: 72px;
-  transform: translateY(-50%);
-  background: #fff;
-  color: #222;
-  padding: 6px 10px;
-  border: 2px solid #333;
-  font-size: 12px;
-  font-family: "Courier New", "Monaco", "Menlo", monospace;
-  font-weight: bold;
-  white-space: nowrap;
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
-  pointer-events: none;
-  animation: bubbleIn 0.3s ease-out;
+  background: var(--bubble-bg);
+  color: var(--bubble-fg);
+  padding: 8px 12px;
+  border: 2px solid var(--bubble-border);
+  font-size: 13px;
+  font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB",
+    "Segoe UI", "Courier New", monospace;
+  font-weight: 600;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 220px;
   min-width: 60px;
   text-align: center;
-  z-index: 10;
-  line-height: 1.4;
+  line-height: 1.45;
   image-rendering: pixelated;
-}
-
-/* 箭头指向左边（指向小牛） */
-.bubble::after {
-  content: '';
-  position: absolute;
-  left: -8px;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  background: #fff;
-  border-left: 2px solid #333;
-  border-bottom: 2px solid #333;
-  transform: translateY(-50%) rotate(45deg);
+  box-shadow: 2px 2px 0 var(--bubble-border), 0 4px 14px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  z-index: 10;
+  opacity: 1;
+  transition: opacity 0.18s ease;
 }
 
 .bubble.hidden {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
-@keyframes bubbleIn {
-  from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
-  to { opacity: 1; transform: translateY(-50%) translateX(0); }
+/* 箭头：4 向各自一套，始终指向小牛 */
+.bubble::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--bubble-bg);
+  box-sizing: border-box;
 }
 
-/* 右键菜单 — 像素风格 */
-.context-menu {
+/* 默认：右侧（bottom 表面常用） */
+.bubble,
+.bubble[data-placement="right"] {
+  top: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+}
+.bubble::after,
+.bubble[data-placement="right"]::after {
+  left: -7px;
+  top: 50%;
+  border-left: 2px solid var(--bubble-border);
+  border-bottom: 2px solid var(--bubble-border);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+/* 左侧 */
+.bubble[data-placement="left"] {
+  top: 50%;
+  right: calc(100% + 12px);
+  left: auto;
+  transform: translateY(-50%);
+}
+.bubble[data-placement="left"]::after {
+  right: -7px;
+  left: auto;
+  top: 50%;
+  border-right: 2px solid var(--bubble-border);
+  border-top: 2px solid var(--bubble-border);
+  border-left: none;
+  border-bottom: none;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+/* 顶部 */
+.bubble[data-placement="top"] {
+  left: 50%;
+  bottom: calc(100% + 12px);
+  top: auto;
+  transform: translateX(-50%);
+}
+.bubble[data-placement="top"]::after {
+  left: 50%;
+  bottom: -7px;
+  top: auto;
+  border-right: 2px solid var(--bubble-border);
+  border-bottom: 2px solid var(--bubble-border);
+  border-left: none;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+/* 底部 */
+.bubble[data-placement="bottom"] {
+  left: 50%;
+  top: calc(100% + 12px);
+  transform: translateX(-50%);
+}
+.bubble[data-placement="bottom"]::after {
+  left: 50%;
+  top: -7px;
+  border-left: 2px solid var(--bubble-border);
+  border-top: 2px solid var(--bubble-border);
+  border-bottom: none;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+/* 右键菜单 / 互动菜单 — 共享风格（像素风 + 分组 + 过渡） */
+.context-menu,
+.interaction-menu {
+  --menu-bg: #ffffff;
+  --menu-fg: #1f1f1f;
+  --menu-muted: #6b6b6b;
+  --menu-border: #2a2a2a;
+  --menu-hover: #f1efe7;
+
   position: fixed;
-  background: #fff;
-  border: 2px solid #333;
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
-  padding: 2px 0;
-  min-width: 140px;
+  background: var(--menu-bg);
+  color: var(--menu-fg);
+  border: 2px solid var(--menu-border);
+  box-shadow: 2px 2px 0 var(--menu-border), 0 6px 18px rgba(0, 0, 0, 0.16);
+  padding: 4px 0;
+  min-width: 200px;
   z-index: 10000;
-  font-family: "Courier New", "Monaco", "Menlo", monospace;
-  font-size: 12px;
-  font-weight: bold;
+  font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB",
+    "Segoe UI", "Courier New", monospace;
+  font-size: 13px;
+  font-weight: 600;
   -webkit-app-region: no-drag;
+  transform-origin: top left;
+  animation: menuIn 120ms ease-out;
+  outline: none;
 }
 
-.context-menu-item {
-  padding: 6px 12px;
+.interaction-menu {
+  z-index: 10001;
+  min-width: 220px;
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.menu-group-label {
+  padding: 4px 12px 2px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--menu-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  user-select: none;
+}
+
+.context-menu-item,
+.interaction-menu-item {
+  padding: 7px 12px;
   cursor: pointer;
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  line-height: 1.2;
+  transition: background-color 80ms ease;
 }
 
-.context-menu-item:hover {
-  background: #333;
-  color: #fff;
+.context-menu-item > .mi-icon,
+.interaction-menu-item > .mi-icon {
+  font-size: 14px;
+  text-align: center;
+  width: 22px;
+  display: inline-block;
+}
+
+.context-menu-item > .mi-label,
+.interaction-menu-item > .mi-label {
+  color: var(--menu-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-menu-item > .mi-meta,
+.interaction-menu-item > .mi-meta {
+  color: var(--menu-muted);
+  font-size: 11px;
+  font-weight: 500;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.context-menu-item:hover,
+.interaction-menu-item:hover,
+.context-menu-item.is-active,
+.interaction-menu-item.is-active {
+  background: var(--menu-hover);
+  color: var(--menu-fg);
+}
+
+.context-menu-item:hover .mi-meta,
+.interaction-menu-item:hover .mi-meta,
+.context-menu-item.is-active .mi-meta,
+.interaction-menu-item.is-active .mi-meta {
+  color: var(--menu-fg);
 }
 
 .context-menu-divider {
-  height: 2px;
-  background: #333;
-  margin: 2px 0;
-}
-
-/* 互动菜单（双击弹出）— 像素风格 */
-.interaction-menu {
-  position: fixed;
-  background: #fff;
-  border: 2px solid #333;
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
-  padding: 2px 0;
-  min-width: 120px;
-  z-index: 10001;
-  font-family: "Courier New", "Monaco", "Menlo", monospace;
-  font-size: 12px;
-  font-weight: bold;
-  -webkit-app-region: no-drag;
-}
-
-.interaction-menu-item {
-  padding: 6px 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.interaction-menu-item:hover {
-  background: #333;
-  color: #fff;
+  height: 1px;
+  background: #e0dcd2;
+  margin: 4px 8px;
 }
 
 /* 天气动画 */
