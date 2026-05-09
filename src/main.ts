@@ -1,7 +1,7 @@
 import { Pet } from './pet/Pet';
 import { SkinManager } from './pet/SkinManager';
 import { CowFrame } from './pet/CowSprite';
-import { getTimeState, getTimeMessages } from './pet/TimeAwareness';
+import { getTimeState } from './pet/TimeAwareness';
 
 // Global skin manager
 const skinManager = new SkinManager();
@@ -12,113 +12,96 @@ const timeState = getTimeState();
 (window as any).__timeState = timeState;
 console.log(`⏰ 当前时段: ${timeState.period} (${timeState.hour}:00) — ${timeState.mood}`);
 
-// Set initial sprite and animate
+// 每个状态对应的帧序列 + 播放速率（fps）
+// 帧调度统一由 requestAnimationFrame 驱动，避免多个 setInterval 竞态
+type FrameSet = { frames: CowFrame[]; fps: number };
+
+const FRAME_MAP: Record<string, FrameSet> = {
+  idle:        { frames: ['idle1', 'idle2'],        fps: 1.25 }, // ~800ms 切
+  'walk-left': { frames: ['walk1', 'walk2'],        fps: 3.3  }, // ~300ms
+  'walk-right':{ frames: ['walk1', 'walk2'],        fps: 3.3  },
+  fall:        { frames: ['fall'],                   fps: 5    },
+  grabbed:     { frames: ['grabbed'],                fps: 6    },
+  land:        { frames: ['idle1'],                  fps: 1    },
+  sleep:       { frames: ['sleep', 'idle2', 'sleep'],fps: 0.4  }, // ~2.5s
+  eat:         { frames: ['eat', 'idle1'],           fps: 4    },
+  happy:       { frames: ['happy', 'react'],         fps: 5    },
+  react:       { frames: ['react'],                  fps: 2    },
+};
+
+function getFrameSetFromClassName(className: string): { state: string; set: FrameSet } {
+  // 优先级：grabbed > fall > happy > eat > sleep > react > land > walk-* > idle
+  const priorities: Array<keyof typeof FRAME_MAP> = [
+    'grabbed', 'fall', 'happy', 'eat', 'sleep', 'react', 'land',
+    'walk-left', 'walk-right', 'idle',
+  ];
+  for (const s of priorities) {
+    if (className.includes(s)) return { state: s, set: FRAME_MAP[s] };
+  }
+  return { state: 'idle', set: FRAME_MAP.idle };
+}
+
 function initSprite(): void {
   const petEl = document.querySelector('.pet') as HTMLElement;
-  if (petEl) {
-    const svgContainer = document.createElement('div');
-    svgContainer.className = 'cow-sprite';
-    svgContainer.style.position = 'relative';
-    svgContainer.innerHTML = skinManager.render('idle1');
-    petEl.appendChild(svgContainer);
+  if (!petEl) return;
 
-    // Add time-based accessory (night cap in evening/night)
-    if (timeState.accessory) {
-      const accessoryEl = document.createElement('div');
-      accessoryEl.innerHTML = timeState.accessory;
-      accessoryEl.style.position = 'absolute';
-      accessoryEl.style.top = '0';
-      accessoryEl.style.left = '0';
-      accessoryEl.style.pointerEvents = 'none';
-      svgContainer.appendChild(accessoryEl.firstChild as Node);
+  const svgContainer = document.createElement('div');
+  svgContainer.className = 'cow-sprite';
+  svgContainer.style.position = 'relative';
+  svgContainer.innerHTML = skinManager.render('idle1');
+  petEl.appendChild(svgContainer);
+
+  // 时段配件（夜间睡帽等）
+  if (timeState.accessory) {
+    const accessoryEl = document.createElement('div');
+    accessoryEl.innerHTML = timeState.accessory;
+    accessoryEl.style.position = 'absolute';
+    accessoryEl.style.top = '0';
+    accessoryEl.style.left = '0';
+    accessoryEl.style.pointerEvents = 'none';
+    svgContainer.appendChild(accessoryEl.firstChild as Node);
+  }
+
+  // 渲染缓存：相同 (skinId, frame, fatigue) 只生成一次字符串
+  let cacheKey = '';
+  let cachedSVG = '';
+  const renderFrame = (frame: CowFrame) => {
+    const pet = (window as any).__pet;
+    const fatigue = pet?.getScreenTimeFatigue?.() || 'normal';
+    const skinId = skinManager.currentId;
+    const key = `${skinId}:${frame}:${fatigue}`;
+    if (key !== cacheKey) {
+      cacheKey = key;
+      cachedSVG = skinManager.render(frame, fatigue);
+      svgContainer.innerHTML = cachedSVG;
+    }
+  };
+
+  // 跟帧驱动：每帧计算当前状态应显示哪个帧，只在变化时写 DOM
+  let lastFrame: CowFrame | null = null;
+  let stateStartTime = performance.now();
+  let prevState = '';
+
+  const tick = (now: number) => {
+    const className = petEl.className;
+    const { state, set } = getFrameSetFromClassName(className);
+
+    if (state !== prevState) {
+      prevState = state;
+      stateStartTime = now;
+      lastFrame = null; // 强制重渲
     }
 
-    // Helper to render current skin with fatigue
-    const render = (frame: CowFrame) => {
-      const pet = (window as any).__pet;
-      const fatigue = pet?.getScreenTimeFatigue?.() || 'normal';
-      svgContainer.innerHTML = skinManager.render(frame, fatigue);
-    };
-
-    // Animate idle frames
-    let frame = 0;
-    setInterval(() => {
-      const currentState = petEl.className;
-      if (currentState.includes('idle') && !currentState.includes('grabbed')) {
-        render(frame % 2 === 0 ? 'idle1' : 'idle2');
-        frame++;
-      }
-    }, 800);
-
-    // Animate walk frames
-    let walkFrame = 0;
-    setInterval(() => {
-      const currentState = petEl.className;
-      if (currentState.includes('walk')) {
-        render(walkFrame % 2 === 0 ? 'walk1' : 'walk2');
-        walkFrame++;
-      }
-    }, 300);
-
-    // Animate fall
-    setInterval(() => {
-      const currentState = petEl.className;
-      if (currentState.includes('fall')) {
-        render('fall');
-      }
-    }, 200);
-
-    // Animate sleep (slow breathing + Zzz)
-    let sleepFrame = 0;
-    setInterval(() => {
-      const currentState = petEl.className;
-      if (currentState.includes('sleep')) {
-        render(sleepFrame % 3 === 0 ? 'sleep' : (sleepFrame % 3 === 1 ? 'idle2' : 'sleep'));
-        sleepFrame++;
-      }
-    }, 2500);
-
-    // Animate eat (chomping faster)
-    let eatFrame = 0;
-    setInterval(() => {
-      const currentState = petEl.className;
-      if (currentState.includes('eat')) {
-        render(eatFrame % 2 === 0 ? 'eat' : 'idle1');
-        eatFrame++;
-      }
-    }, 250);
-
-    // Animate happy (wagging tail + sparkles)
-    let happyFrame = 0;
-    setInterval(() => {
-      const currentState = petEl.className;
-      if (currentState.includes('happy')) {
-        render(happyFrame % 2 === 0 ? 'happy' : 'react');
-        happyFrame++;
-      }
-    }, 200);
-
-    // Animate grabbed (surprised)
-    setInterval(() => {
-      const currentState = petEl.className;
-      if (currentState.includes('grabbed')) {
-        render('grabbed');
-      }
-    }, 150);
-
-    // Animate react
-    const observer = new MutationObserver(() => {
-      if (petEl.className.includes('react') && !petEl.className.includes('happy')) {
-        render('react');
-        setTimeout(() => {
-          if (!petEl.className.includes('happy')) {
-            render('idle1');
-          }
-        }, 500);
-      }
-    });
-    observer.observe(petEl, { attributes: true, attributeFilter: ['class'] });
-  }
+    const age = now - stateStartTime;
+    const i = Math.floor((age / 1000) * set.fps) % set.frames.length;
+    const frame = set.frames[i];
+    if (frame !== lastFrame) {
+      lastFrame = frame;
+      renderFrame(frame);
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 // Initialize
@@ -130,6 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Make pet accessible for debugging
   (window as any).__pet = pet;
+
+  // 全局快捷键：Esc 关闭菜单（交给 Pet 内部），Cmd/Ctrl+H 隐藏/显示
+  window.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h') {
+      e.preventDefault();
+      pet.toggle();
+    }
+  });
 
   console.log('🐮 桌面宠物已启动！');
 });

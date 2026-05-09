@@ -121,53 +121,103 @@ export class Pet {
     this.hideInteractionMenu();
     const menu = document.createElement('div');
     menu.className = 'interaction-menu';
+    menu.setAttribute('role', 'menu');
+    menu.tabIndex = -1;
     // 阻止菜单区域的事件传播到窗口（防止 macOS 全屏/拖拽）
     menu.addEventListener('mousedown', (e) => e.stopPropagation());
     menu.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); });
 
-    const items = [
-      { icon: '🤚', text: '摸摸头', action: () => {
-        this.stateMachine.transition('happy');
-        this.showBubble(this.getRandomMessage('happy'));
-        setTimeout(() => { if (this.stateMachine.state === 'happy') this.stateMachine.transition('idle'); }, 1500);
-      }},
-      { icon: '🍽️', text: '喂食', action: () => {
-        this.stateMachine.transition('eat');
-        this.showBubble(this.getRandomMessage('eat'));
-        this.achievements.recordFeed();
-        setTimeout(() => { if (this.stateMachine.state === 'eat') this.stateMachine.transition('idle'); }, 3000);
-      }},
-      { icon: '😴', text: '睡觉', action: () => {
-        this.stateMachine.transition('sleep');
-        this.showBubble(this.getRandomMessage('sleep'));
-      }},
-      { icon: '🎨', text: '换肤', action: () => { this.cycleSkin(); }},
-      { icon: '🏆', text: `成就 (${this.achievements.getUnlockedCount()}/${this.achievements.getTotalCount()})`, action: () => { this.showAchievements(); }},
-      { icon: '⏱️', text: this.focusTimer ? '停止专注' : '番茄钟', action: () => {
-        if (this.focusTimer) this.stopFocus(); else this.startFocus();
-      }},
-      { icon: '🖥️', text: `屏幕 ${this.screenTime.getFormattedTime()}`, action: () => {
-        this.showBubble(this.screenTime.getTimeMessage());
-      }},
-      { icon: this.weather.type === 'sunny' ? '☀️' : this.weather.type === 'rainy' ? '🌧️' : this.weather.type === 'snowy' ? '❄️' : '☁️', text: `天气 ${this.weather.temp}°C`, action: () => {
-        const labels: Record<string, string> = { sunny: '☀️ 晴天', cloudy: '☁️ 阴天', rainy: '🌧️ 雨天', snowy: '❄️ 下雪' };
-        const tips: Record<string, string> = { sunny: '天气不错，出去走走？', cloudy: '有点阴，带件外套～', rainy: '下雨了，记得带伞！', snowy: '下雪了，注意保暖！' };
-        this.showBubble(`${labels[this.weather.type]} ${this.weather.temp}°C — ${tips[this.weather.type] || ''}`);
-      }},
+    const weatherIcon = this.weather.type === 'sunny' ? '☀️'
+      : this.weather.type === 'rainy' ? '🌧️'
+      : this.weather.type === 'snowy' ? '❄️' : '☁️';
+
+    type Group = { label: string; items: Array<{ icon: string; label: string; meta?: string; action: () => void }> };
+    const groups: Group[] = [
+      {
+        label: '互动',
+        items: [
+          { icon: '🤚', label: '摸摸头', action: () => {
+            this.stateMachine.transition('happy');
+            this.showBubble(this.getRandomMessage('happy'));
+            setTimeout(() => { if (this.stateMachine.state === 'happy') this.stateMachine.transition('idle'); }, 1500);
+          }},
+          { icon: '🍽️', label: '喂食', action: () => {
+            this.stateMachine.transition('eat');
+            this.showBubble(this.getRandomMessage('eat'));
+            this.achievements.recordFeed();
+            setTimeout(() => { if (this.stateMachine.state === 'eat') this.stateMachine.transition('idle'); }, 3000);
+          }},
+          { icon: '😴', label: '睡觉', action: () => {
+            this.stateMachine.transition('sleep');
+            this.showBubble(this.getRandomMessage('sleep'));
+          }},
+        ],
+      },
+      {
+        label: '外观',
+        items: [
+          { icon: '🎨', label: '换肤', action: () => { this.cycleSkin(); } },
+        ],
+      },
+      {
+        label: '工具',
+        items: [
+          { icon: '⏱️', label: this.focusTimer ? '停止专注' : '番茄钟',
+            meta: this.focusTimer ? '进行中' : '25分钟',
+            action: () => { if (this.focusTimer) this.stopFocus(); else this.startFocus(); } },
+        ],
+      },
+      {
+        label: '统计',
+        items: [
+          { icon: '🏆', label: '成就',
+            meta: `${this.achievements.getUnlockedCount()}/${this.achievements.getTotalCount()}`,
+            action: () => this.showAchievements() },
+          { icon: '🖥️', label: '屏幕时间',
+            meta: this.screenTime.getFormattedTime(),
+            action: () => this.showBubble(this.screenTime.getTimeMessage()) },
+          { icon: weatherIcon, label: '天气',
+            meta: `${this.weather.temp}°C`,
+            action: () => {
+              const labels: Record<string, string> = { sunny: '☀️ 晴天', cloudy: '☁️ 阴天', rainy: '🌧️ 雨天', snowy: '❄️ 下雪' };
+              const tips: Record<string, string> = { sunny: '天气不错，出去走走？', cloudy: '有点阴，带件外套～', rainy: '下雨了，记得带伞！', snowy: '下雪了，注意保暖！' };
+              this.showBubble(`${labels[this.weather.type] || '🌍'} ${this.weather.temp}°C — ${tips[this.weather.type] || ''}`);
+            } },
+        ],
+      },
     ];
 
-    items.forEach(item => {
-      const el = document.createElement('div');
-      el.className = 'interaction-menu-item';
-      el.innerHTML = `<span>${item.icon}</span><span>${item.text}</span>`;
-      el.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.hideInteractionMenu();
-        item.action();
-        this.lastInteractionTime = Date.now();
+    const itemEls: HTMLElement[] = [];
+    groups.forEach((group, gi) => {
+      if (gi > 0) {
+        const divider = document.createElement('div');
+        divider.className = 'context-menu-divider';
+        menu.appendChild(divider);
+      }
+      const label = document.createElement('div');
+      label.className = 'menu-group-label';
+      label.textContent = group.label;
+      menu.appendChild(label);
+
+      group.items.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'interaction-menu-item';
+        el.setAttribute('role', 'menuitem');
+        el.tabIndex = -1;
+        el.innerHTML =
+          `<span class="mi-icon">${item.icon}</span>` +
+          `<span class="mi-label">${item.label}</span>` +
+          `<span class="mi-meta">${item.meta ?? ''}</span>`;
+        el.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.hideInteractionMenu();
+          item.action();
+          this.lastInteractionTime = Date.now();
+        });
+        menu.appendChild(el);
+        itemEls.push(el);
       });
-      menu.appendChild(el);
     });
 
     document.body.appendChild(menu);
@@ -178,10 +228,14 @@ export class Pet {
     menu.style.left = `${mx}px`;
     menu.style.top = `${my}px`;
     this.interactionMenu = menu;
+    this.attachMenuKeyboard(menu, itemEls, () => this.hideInteractionMenu());
     // 菜单显示时立即禁用 click-through
     this.isCursorOverPet = true;
     this.toggleCursorEvents(false);
-    setTimeout(() => { document.addEventListener('mousedown', this._hideInteractionMenuHandler); }, 0);
+    setTimeout(() => {
+      document.addEventListener('mousedown', this._hideInteractionMenuHandler);
+      menu.focus();
+    }, 0);
   }
 
   private _hideInteractionMenuHandler = (e: MouseEvent) => {
@@ -197,6 +251,35 @@ export class Pet {
     }
     document.removeEventListener('mousedown', this._hideInteractionMenuHandler);
     this.clickThroughCooldown = 20; // 约 2 秒内不恢复 click-through
+  }
+
+  // 菜单键盘导航：↑↓ 选择 / Enter 触发 / Esc 关闭
+  private attachMenuKeyboard(menu: HTMLElement, items: HTMLElement[], onClose: () => void): void {
+    if (items.length === 0) return;
+    let idx = -1;
+    const setActive = (i: number) => {
+      if (idx >= 0) items[idx]?.classList.remove('is-active');
+      idx = (i + items.length) % items.length;
+      const el = items[idx];
+      el.classList.add('is-active');
+      el.scrollIntoView({ block: 'nearest' });
+    };
+    menu.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault(); setActive(idx + 1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault(); setActive(idx - 1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (idx >= 0) items[idx].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      } else if (e.key === 'Escape') {
+        e.preventDefault(); onClose();
+      }
+    });
+    // 鼠标移入同步高亮
+    items.forEach((el, i) => {
+      el.addEventListener('mouseenter', () => setActive(i));
+    });
   }
 
   private cycleSkin(): void {
@@ -314,32 +397,60 @@ export class Pet {
     this.hideContextMenu();
     const menu = document.createElement('div');
     menu.className = 'context-menu';
+    menu.setAttribute('role', 'menu');
+    menu.tabIndex = -1;
     menu.style.left = `${x}px`; menu.style.top = `${y}px`;
     menu.addEventListener('mousedown', (e) => e.stopPropagation());
-    const items = [
-      { icon: this.isVisible ? '🙈' : '👀', text: this.isVisible ? '隐藏小牛' : '显示小牛', action: () => this.toggleVisibility() },
-      { icon: '🔄', text: '重新召唤', action: () => this.respawn() },
-      { icon: '💤', text: '让牛牛睡觉', action: () => this.forceSleep() },
-      { icon: '🍽️', text: '喂牛牛吃草', action: () => this.forceEat() },
+
+    type Row =
+      | { divider: true }
+      | { icon: string; label: string; meta?: string; action: () => void };
+
+    const items: Row[] = [
+      { icon: this.isVisible ? '🙈' : '👀', label: this.isVisible ? '隐藏小牛' : '显示小牛', action: () => this.toggleVisibility() },
+      { icon: '🔄', label: '重新召唤', action: () => this.respawn() },
+      { icon: '💤', label: '让牛牛睡觉', action: () => this.forceSleep() },
+      { icon: '🍽️', label: '喂牛牛吃草', action: () => this.forceEat() },
       { divider: true },
-      { icon: '❌', text: '退出', action: () => this.quit() },
+      { icon: '❌', label: '退出', action: () => this.quit() },
     ];
+
+    const itemEls: HTMLElement[] = [];
     items.forEach(item => {
-      if ('divider' in item && item.divider) {
+      if ('divider' in item) {
         const d = document.createElement('div'); d.className = 'context-menu-divider'; menu.appendChild(d);
       } else {
         const el = document.createElement('div');
         el.className = 'context-menu-item';
-        el.innerHTML = `<span>${item.icon}</span><span>${item.text}</span>`;
-        el.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); this.hideContextMenu(); item.action(); });
+        el.setAttribute('role', 'menuitem');
+        el.tabIndex = -1;
+        el.innerHTML =
+          `<span class="mi-icon">${item.icon}</span>` +
+          `<span class="mi-label">${item.label}</span>` +
+          `<span class="mi-meta">${item.meta ?? ''}</span>`;
+        el.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.hideContextMenu();
+          item.action();
+        });
         menu.appendChild(el);
+        itemEls.push(el);
       }
     });
+
     document.body.appendChild(menu);
+    // 防越界修正
+    const mr = menu.getBoundingClientRect();
+    if (mr.right > window.innerWidth) menu.style.left = `${window.innerWidth - mr.width - 5}px`;
+    if (mr.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - mr.height - 5}px`;
+
     this.contextMenu = menu;
+    this.attachMenuKeyboard(menu, itemEls, () => this.hideContextMenu());
     // 菜单显示时立即禁用 click-through
     this.isCursorOverPet = true;
     this.toggleCursorEvents(false);
+    setTimeout(() => menu.focus(), 0);
   }
 
   private hideContextMenu(): void {
@@ -401,6 +512,11 @@ export class Pet {
     this.container.style.display = this.isVisible ? 'block' : 'none';
   }
 
+  // 公共接口：供全局快捷键调用
+  toggle(): void {
+    this.toggleVisibility();
+  }
+
   private forceSleep(): void {
     this.physics.stop(); this.stateMachine.transition('sleep');
     this.showBubble(this.getRandomMessage('sleep'));
@@ -446,8 +562,37 @@ export class Pet {
   private showBubble(message: string): void {
     if (this.bubbleTimer) clearTimeout(this.bubbleTimer);
     this.bubbleEl.textContent = message;
+    this.updateBubblePlacement();
     this.bubbleEl.classList.remove('hidden');
     this.bubbleTimer = setTimeout(() => this.bubbleEl.classList.add('hidden'), this.config.bubbleDuration);
+  }
+
+  // 根据小牛所在表面 + 屏幕可用空间，选择气泡方向
+  private updateBubblePlacement(): void {
+    const p = this.physics.pos;
+    const size = this.config.petSize;
+    const margin = 16;
+    const estW = 240; // 估算最大气泡宽度
+    const estH = 80;
+
+    // 候选顺序依据 surface（先让气泡指向小牛的"外侧"以免挡脸）
+    let order: Array<'right' | 'left' | 'top' | 'bottom'>;
+    switch (this.physics.surface) {
+      case 'left':   order = ['right', 'top', 'bottom', 'left']; break;
+      case 'right':  order = ['left', 'top', 'bottom', 'right']; break;
+      case 'top':    order = ['bottom', 'right', 'left', 'top']; break;
+      default:       order = ['right', 'left', 'top', 'bottom']; break;
+    }
+
+    const fits: Record<string, boolean> = {
+      right:  p.x + size + margin + estW < window.innerWidth,
+      left:   p.x - margin - estW > 0,
+      top:    p.y - margin - estH > 0,
+      bottom: p.y + size + margin + estH < window.innerHeight,
+    };
+
+    const placement = order.find(d => fits[d]) || order[0];
+    this.bubbleEl.setAttribute('data-placement', placement);
   }
 
   private getRandomMessage(category: keyof typeof CARE_MESSAGES): string {
@@ -462,13 +607,42 @@ export class Pet {
 
   // ── 游戏循环 ──────────────────────────────────────────
 
+  // 每个状态允许的最长停留时间（ms）；超过后强制回到 idle。
+  // 用于兜底自动触发路径（如 idle→eat 漏写退出）和几何分布长尾（sleep 醒来）。
+  // 用户主动交互的状态（grabbed）和由物理驱动的状态（fall）不在此列。
+  private static readonly MAX_STATE_DURATION: Partial<Record<PetStateType, number>> = {
+    eat: 3500,
+    sleep: 45000,
+    happy: 2200,
+    react: 800,
+    land: 500,
+    'walk-left': 15000,
+    'walk-right': 15000,
+  };
+
   private startGameLoop(): void {
     const loop = () => { this.update(); this.animationFrame = requestAnimationFrame(loop); };
     this.animationFrame = requestAnimationFrame(loop);
   }
 
+  // 强制退出超时状态：所有状态的最终兜底
+  private enforceStateTimeout(): boolean {
+    const s = this.stateMachine.state;
+    const cap = Pet.MAX_STATE_DURATION[s];
+    if (!cap) return false;
+    if (this.stateMachine.stateAge <= cap) return false;
+    // 清理物理速度（避免走路状态超时后仍带速度残留）
+    if (s === 'walk-left' || s === 'walk-right') this.physics.stop();
+    this.stateMachine.transition('idle');
+    return true;
+  }
+
   private update(): void {
     if (this.isDragging) return;
+
+    // 所有状态的兜底：超时强制回 idle（放在状态分支前）
+    this.enforceStateTimeout();
+
     const s = this.stateMachine.state;
     switch (s) {
       case 'idle': this.updateIdle(); this.updateAvoidCursor(); break;
@@ -476,7 +650,7 @@ export class Pet {
       case 'fall': break;
       case 'land': break;
       case 'sleep': this.updateSleep(); break;
-      case 'eat': break;
+      case 'eat': this.updateEat(); break;
       case 'grabbed': return;
     }
     const { hitGround, hitEdge } = this.physics.update();
@@ -525,8 +699,24 @@ export class Pet {
     if (Math.random() < 0.005) { const d = this.stateMachine.state === 'walk-left' ? 'right' : 'left'; this.physics.walk(d); this.stateMachine.transition(d === 'left' ? 'walk-left' : 'walk-right'); }
   }
 
+  // 自动触发的 eat：吃到 2.5–3.5s 随机退出（不再永久卡住）
+  private updateEat(): void {
+    const t = this.stateMachine.stateAge;
+    if (t > 2500 && Math.random() < 0.02) {
+      this.stateMachine.transition('idle');
+    }
+  }
+
+  // 睡觉唤醒：提高基础概率，并在 20s+ 加权鼓励醒来（仍保留自然的随机感）
+  // 叠加全局兜底 45s 强制醒
   private updateSleep(): void {
-    if (Math.random() < 0.0005) { this.stateMachine.transition('idle'); this.showBubble("哞～牛牛睡醒了！"); }
+    const t = this.stateMachine.stateAge;
+    const base = 0.0015;                               // ~11s 平均
+    const bonus = t > 20000 ? (t - 20000) / 15_000_000 : 0; // 20s 后线性增加
+    if (Math.random() < base + bonus) {
+      this.stateMachine.transition('idle');
+      this.showBubble("哞～牛牛睡醒了！");
+    }
   }
 
   private updateAvoidCursor(): void {
